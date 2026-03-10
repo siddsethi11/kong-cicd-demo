@@ -45,7 +45,7 @@ jobs:
       - name: Setup Inso CLI
         uses: kong/setup-inso@v2
         with:
-          inso-version: 12.3.1
+          inso-version: 12.4.0
 
       - name: Lint Mutual Fund OAS
         # Fails the pipeline if any spectral rule violations are found
@@ -121,7 +121,7 @@ jobs:
       - name: Setup Inso CLI
         uses: kong/setup-inso@v2
         with:
-          inso-version: 12.3.1
+          inso-version: 12.4.0
 
       - name: Inject Konnect data-plane URL into Insomnia environment
         env:
