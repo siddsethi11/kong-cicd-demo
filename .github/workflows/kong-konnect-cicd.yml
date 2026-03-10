@@ -114,7 +114,7 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   test-with-inso:
     name: "Step 4: API tests with inso run test"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kong-dp]
     needs: deploy-konnect
     if: github.event_name != 'pull_request'
 
@@ -122,17 +122,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Inso CLI 12.4.0
-        run: |
-          mkdir -p /tmp/inso-extract
-          curl -sSL "https://github.com/Kong/insomnia/releases/download/core@12.4.0/inso-linux-x64-12.4.0.tar.xz" \
-            | tar -xJ -C /tmp/inso-extract/
-          find /tmp/inso-extract -name 'inso' -type f -exec install -m 0755 {} /usr/local/bin/inso \;
-          inso --version
+      - name: Verify inso CLI is available
+        run: inso --version
 
       - name: Inject Konnect data-plane URL into Insomnia environment
         env:
-          KONNECT_DP_URL: ${{ secrets.KONNECT_DP_URL }}
+          KONNECT_DP_URL: ${{ secrets.KONNECT_DP_URL || 'http://localhost:8000' }}
         run: |
           [ -n "$KONNECT_DP_URL" ] || { echo "Set KONNECT_DP_URL secret (e.g. http://api.kong.com)"; exit 1; }
           sed -i "s|  base_url:.*|  base_url: $KONNECT_DP_URL|" \
