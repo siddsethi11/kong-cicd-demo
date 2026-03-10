@@ -42,10 +42,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Inso CLI
-        uses: kong/setup-inso@v2
-        with:
-          inso-version: 12.4.0
+      - name: Setup Inso CLI 12.4.0
+        run: |
+          mkdir -p /tmp/inso-extract
+          curl -sSL "https://github.com/Kong/insomnia/releases/download/core@12.4.0/inso-linux-x64-12.4.0.tar.xz" \
+            | tar -xJ -C /tmp/inso-extract/
+          find /tmp/inso-extract -name 'inso' -type f -exec install -m 0755 {} /usr/local/bin/inso \;
+          inso --version
 
       - name: Lint Mutual Fund OAS
         # Fails the pipeline if any spectral rule violations are found
@@ -118,10 +121,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Inso CLI
-        uses: kong/setup-inso@v2
-        with:
-          inso-version: 12.4.0
+      - name: Setup Inso CLI 12.4.0
+        run: |
+          mkdir -p /tmp/inso-extract
+          curl -sSL "https://github.com/Kong/insomnia/releases/download/core@12.4.0/inso-linux-x64-12.4.0.tar.xz" \
+            | tar -xJ -C /tmp/inso-extract/
+          find /tmp/inso-extract -name 'inso' -type f -exec install -m 0755 {} /usr/local/bin/inso \;
+          inso --version
 
       - name: Inject Konnect data-plane URL into Insomnia environment
         env:
