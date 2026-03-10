@@ -127,12 +127,14 @@ jobs:
 
       - name: Inject Konnect data-plane URL into Insomnia environment
         env:
-          KONNECT_DP_URL: ${{ secrets.KONNECT_DP_URL || 'http://localhost:8000' }}
+          KONNECT_DP_URL: ${{ secrets.KONNECT_DP_URL || vars.KONNECT_DP_URL }}
         run: |
-          [ -n "$KONNECT_DP_URL" ] || { echo "Set KONNECT_DP_URL secret (e.g. http://api.kong.com)"; exit 1; }
-          sed -i "s|  base_url:.*|  base_url: $KONNECT_DP_URL|" \
+          [ -n "$KONNECT_DP_URL" ] || { echo "Set KONNECT_DP_URL as a secret or variable (e.g. http://localhost:8000)"; exit 1; }
+          # BSD sed (macOS) requires explicit empty-string backup arg with -i
+          sed -i '' "s|  base_url:.*|  base_url: $KONNECT_DP_URL|" \
             insomnia/.insomnia/Environment/env_sbi_nav_konnect.yml
           echo "Set base_url → $KONNECT_DP_URL"
+          grep "base_url" insomnia/.insomnia/Environment/env_sbi_nav_konnect.yml
 
       - name: Wait for Konnect data-plane propagation
         run: sleep 10
