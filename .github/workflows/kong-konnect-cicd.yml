@@ -73,6 +73,7 @@ jobs:
 
       - name: "Step 2 – Convert OAS to Kong declarative config"
         run: |
+          mkdir -p kong
           deck file openapi2kong \
             -s openapi/sbi-mutual-fund-openapi.yaml \
             -o kong/kong-generated.yaml
