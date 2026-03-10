@@ -39,13 +39,76 @@ Examples:
 - On `push` to `main`: runs lint -> deploy -> API tests
 - On manual `workflow_dispatch`: runs lint -> deploy -> API tests
 
-## Local Dry Run (Optional)
+## Self-Hosted Runner Setup (required for Step 4)
+
+Step 4 (`inso run test`) runs on a **self-hosted macOS runner** so it can reach
+your local Kong data plane at `localhost:8000`. The cloud runner cannot reach your
+machine — the self-hosted runner runs on your Mac alongside the DP.
+
+### One-time setup
 
 ```bash
-# from repo root
-python3 scripts/generate_sandbox.py
-inso lint spec openapi/sbi-mutual-fund-openapi.yaml --ci
-inso run test uts_sbi_nav_suite --env env_sbi_nav_konnect --workingDir insomnia --ci
+# 1. Create the runner directory
+mkdir -p ~/actions-runner && cd ~/actions-runner
+
+# 2. Download the macOS arm64 runner (Apple Silicon)
+curl -sL -o actions-runner-osx-arm64.tar.gz \
+  "https://github.com/actions/runner/releases/download/v2.323.0/actions-runner-osx-arm64-2.323.0.tar.gz"
+tar xzf actions-runner-osx-arm64.tar.gz
+
+# 3. Get a registration token from GitHub
+#    Settings → Actions → Runners → New self-hosted runner
+#    Or via CLI:
+RUNNER_TOKEN=$(gh api -X POST repos/<your-org>/kong-cicd-demo/actions/runners/registration-token --jq '.token')
+
+# 4. Register the runner with the 'kong-dp' label
+./config.sh \
+  --url https://github.com/<your-org>/kong-cicd-demo \
+  --token "$RUNNER_TOKEN" \
+  --name "mac-local-dp" \
+  --labels "self-hosted,macOS,kong-dp" \
+  --work "_work" \
+  --unattended
+```
+
+### Starting the runner (each session)
+
+```bash
+cd ~/actions-runner && ./run.sh &
+```
+
+> Keep this running whenever you trigger the workflow. The runner process
+> listens for jobs and executes Step 4 locally — where `localhost:8000` resolves
+> to your Docker Kong data plane.
+
+### Verify the runner is online
+
+```bash
+gh api repos/<your-org>/kong-cicd-demo/actions/runners \
+  --jq '.runners[] | "\(.name) – \(.status)"'
+# Expected: mac-local-dp – online
+```
+
+### Kong data plane
+
+The data plane must be running before you trigger the workflow:
+
+```bash
+docker ps --filter "publish=8000" --format "{{.Names}} {{.Status}}"
+```
+
+If not running, start it from the Konnect UI (Data Plane Nodes → New Data Plane Node → Docker).
+
+---
+
+## Local Dry Run
+
+```bash
+export KONNECT_TOKEN="<your-pat>"
+export KONNECT_DP_URL="http://localhost:8000"
+
+./test-local.sh              # full 4-step run
+./test-local.sh --skip-deploy  # steps 1–3 only (no Konnect credentials needed)
 ```
 
 ## Demo Talk Track
