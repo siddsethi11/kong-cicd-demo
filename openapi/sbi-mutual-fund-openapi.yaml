@@ -1,0 +1,63 @@
+openapi: 3.0.0
+info:
+  title: SBI Mutual Fund NAV API
+  version: 1.0.0
+  description: A simplified API to check the Net Asset Value (NAV) of SBI Mutual Funds.
+  contact:
+    name: API Support
+    email: support@sbi-mock.in
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://fake-sbi-nav.example.com
+    description: Sandbox/Mock Server
+tags:
+  - name: NAV
+    description: NAV operations
+paths:
+  /nav/{schemeCode}:
+    get:
+      summary: Get NAV by Scheme Code
+      operationId: getNavBySchemeCode
+      tags:
+        - NAV
+      description: Returns the latest NAV for a given mutual fund scheme code.
+      parameters:
+        - name: schemeCode
+          in: path
+          required: true
+          description: The unique code for the mutual fund scheme (e.g., 100035 for SBI Bluechip Fund).
+          schema:
+            type: string
+            example: "100035"
+      responses:
+        '200':
+          description: Successful response with NAV details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schemeCode:
+                    type: string
+                    example: "100035"
+                  schemeName:
+                    type: string
+                    example: "SBI Bluechip Fund - Direct Plan - Growth"
+                  nav:
+                    type: number
+                    example: 78.45
+                  date:
+                    type: string
+                    format: date
+                    example: "2023-10-31"
+        '404':
+          description: Scheme not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Scheme code not found"

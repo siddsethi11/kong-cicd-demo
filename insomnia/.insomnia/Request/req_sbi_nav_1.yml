@@ -1,0 +1,13 @@
+_id: req_sbi_nav_1
+type: Request
+parentId: wrk_sbi_nav_demo_001
+modified: 1709590000000
+created: 1709590000000
+url: "{{ _.base_url }}/nav/100035"
+name: Get NAV for Bluechip Fund (Mock)
+description: ""
+method: GET
+body: {}
+parameters: []
+headers: []
+authentication: {}

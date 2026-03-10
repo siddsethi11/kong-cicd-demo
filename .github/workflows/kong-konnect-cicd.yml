@@ -1,0 +1,151 @@
+name: Kong Konnect Mutual Fund CI/CD
+# ─────────────────────────────────────────────────────────────────────────────
+# Step 1 – Lint OAS with inso lint spec
+# Step 2 – Convert OAS → Kong config with deck file openapi2kong
+# Step 3 – Inject mocking plugin → sandbox.yaml, deploy via deck gateway apply
+# Step 4 – Run post-deploy API tests via inso run test
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "openapi/**"
+      - "insomnia/**"
+      - "scripts/**"
+      - ".github/workflows/kong-konnect-cicd.yml"
+  push:
+    branches: [main]
+    paths:
+      - "openapi/**"
+      - "insomnia/**"
+      - "scripts/**"
+      - ".github/workflows/kong-konnect-cicd.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  KONNECT_ADDR: ${{ vars.KONNECT_ADDR || 'https://in.api.konghq.com' }}
+  KONNECT_CONTROL_PLANE_NAME: ${{ vars.KONNECT_CONTROL_PLANE_NAME || 'marketplace' }}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 1  –  Step 1: Lint OpenAPI Specification
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+  lint-openapi:
+    name: "Step 1: Lint OAS with inso"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Inso CLI
+        uses: kong/setup-inso@v2
+        with:
+          inso-version: 12.4
+
+      - name: Lint Mutual Fund OAS
+        # Fails the pipeline if any spectral rule violations are found
+        run: inso lint spec openapi/sbi-mutual-fund-openapi.yaml --ci
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 2+3  –  Step 2: Convert OAS → Kong config
+#             Step 3: Inject Mocking plugin → sandbox.yaml → deploy to Konnect
+# ─────────────────────────────────────────────────────────────────────────────
+  deploy-konnect:
+    name: "Steps 2+3: Convert, Mock, Deploy to Konnect"
+    runs-on: ubuntu-latest
+    needs: lint-openapi
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup decK CLI
+        uses: kong/setup-deck@v1
+
+      - name: "Step 2 – Convert OAS to Kong declarative config"
+        run: |
+          deck file openapi2kong \
+            -s openapi/sbi-mutual-fund-openapi.yaml \
+            -o kong/kong-generated.yaml
+          echo "── kong-generated.yaml preview ──"
+          cat kong/kong-generated.yaml
+
+      - name: "Step 3a – Inject Mocking plugin → sandbox.yaml"
+        run: |
+          pip install pyyaml -q
+          python3 scripts/generate_sandbox.py
+
+      - name: "Step 3b – Validate sandbox config with deck"
+        run: deck file validate kong/sandbox.yaml
+
+      - name: "Step 3c – Ping Konnect control plane"
+        run: |
+          deck gateway ping \
+            --konnect-token "${{ secrets.KONNECT_TOKEN }}" \
+            --konnect-addr  "${{ env.KONNECT_ADDR }}" \
+            --konnect-control-plane-name "${{ env.KONNECT_CONTROL_PLANE_NAME }}"
+
+      - name: "Step 3d – Show diff before applying"
+        run: |
+          deck gateway diff kong/sandbox.yaml \
+            --konnect-token "${{ secrets.KONNECT_TOKEN }}" \
+            --konnect-addr  "${{ env.KONNECT_ADDR }}" \
+            --konnect-control-plane-name "${{ env.KONNECT_CONTROL_PLANE_NAME }}"
+
+      - name: "Step 3e – Apply sandbox to Konnect"
+        run: |
+          deck gateway apply kong/sandbox.yaml \
+            --konnect-token "${{ secrets.KONNECT_TOKEN }}" \
+            --konnect-addr  "${{ env.KONNECT_ADDR }}" \
+            --konnect-control-plane-name "${{ env.KONNECT_CONTROL_PLANE_NAME }}"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 3  –  Step 4: Post-deploy API Tests via inso run test
+# ─────────────────────────────────────────────────────────────────────────────
+  test-with-inso:
+    name: "Step 4: API tests with inso run test"
+    runs-on: ubuntu-latest
+    needs: deploy-konnect
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Inso CLI
+        uses: kong/setup-inso@v2
+        with:
+          inso-version: 12.4
+
+      - name: Inject Konnect data-plane URL into Insomnia environment
+        env:
+          KONNECT_DP_URL: ${{ secrets.KONNECT_DP_URL }}
+        run: |
+          [ -n "$KONNECT_DP_URL" ] || { echo "❌ Set KONNECT_DP_URL secret (e.g. http://api.kong.com)"; exit 1; }
+          python3 - <<'PY'
+import os
+from pathlib import Path
+path = Path("insomnia/.insomnia/Environment/env_sbi_nav_konnect.yml")
+lines = path.read_text(encoding="utf-8").splitlines()
+patched = [f"  base_url: {os.environ['KONNECT_DP_URL']}" if l.strip().startswith("base_url:") else l for l in lines]
+path.write_text("\n".join(patched) + "\n", encoding="utf-8")
+print(f"Set base_url → {os.environ['KONNECT_DP_URL']}")
+PY
+
+      - name: Wait for Konnect data-plane propagation
+        run: sleep 10
+
+      - name: "Step 4 – Run Insomnia test suite via inso"
+        # Tests are defined in insomnia/.insomnia/UnitTestSuite/uts_sbi_nav_suite.yml
+        # and insomnia/.insomnia/UnitTest/ut_sbi_nav_1.yml
+        run: |
+          inso run test uts_sbi_nav_suite \
+            --env env_sbi_nav_konnect \
+            --workingDir insomnia \
+            --ci

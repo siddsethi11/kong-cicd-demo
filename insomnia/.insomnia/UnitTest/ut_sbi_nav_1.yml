@@ -1,0 +1,13 @@
+_id: ut_sbi_nav_1
+type: UnitTest
+parentId: uts_sbi_nav_suite
+modified: 1709590000000
+created: 1709590000000
+name: Check Status 200 and schemeCode
+requestId: req_sbi_nav_1
+code: |-
+  const response1 = await insomnia.send();
+  expect(response1.status).to.equal(200);
+  const body = JSON.parse(response1.data);
+  expect(body.schemeCode).to.equal("100035");
+  expect(body.nav).to.be.a("number");
