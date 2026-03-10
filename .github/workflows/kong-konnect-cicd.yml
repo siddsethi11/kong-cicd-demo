@@ -127,16 +127,10 @@ jobs:
         env:
           KONNECT_DP_URL: ${{ secrets.KONNECT_DP_URL }}
         run: |
-          [ -n "$KONNECT_DP_URL" ] || { echo "❌ Set KONNECT_DP_URL secret (e.g. http://api.kong.com)"; exit 1; }
-          python3 - <<'PY'
-import os
-from pathlib import Path
-path = Path("insomnia/.insomnia/Environment/env_sbi_nav_konnect.yml")
-lines = path.read_text(encoding="utf-8").splitlines()
-patched = [f"  base_url: {os.environ['KONNECT_DP_URL']}" if l.strip().startswith("base_url:") else l for l in lines]
-path.write_text("\n".join(patched) + "\n", encoding="utf-8")
-print(f"Set base_url → {os.environ['KONNECT_DP_URL']}")
-PY
+          [ -n "$KONNECT_DP_URL" ] || { echo "Set KONNECT_DP_URL secret (e.g. http://api.kong.com)"; exit 1; }
+          sed -i "s|  base_url:.*|  base_url: $KONNECT_DP_URL|" \
+            insomnia/.insomnia/Environment/env_sbi_nav_konnect.yml
+          echo "Set base_url → $KONNECT_DP_URL"
 
       - name: Wait for Konnect data-plane propagation
         run: sleep 10
