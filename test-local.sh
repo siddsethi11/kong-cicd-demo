@@ -5,7 +5,7 @@
 # Steps (match the CI/CD workflow exactly):
 #   1  inso lint spec          – lint the OAS
 #   2  deck file openapi2kong  – convert OAS → Kong declarative config
-#   3  build_sandbox.py        – inject mocking plugin → sandbox.yaml
+#   3  deck file add-plugins   – add mocking plugin from separate file
 #      deck file validate       – validate the generated config
 #      deck gateway diff        – preview changes
 #      deck gateway apply       – deploy to Konnect
@@ -43,11 +43,8 @@ KONNECT_CONTROL_PLANE_NAME="${KONNECT_CONTROL_PLANE_NAME:-marketplace}"
 step "Pre-flight: checking required tools"
 command -v inso    >/dev/null || fail "inso not found.   brew install insomnia-inso"
 command -v deck    >/dev/null || fail "deck not found.   brew install deck"
-command -v python3 >/dev/null || fail "python3 not found."
-python3 -c "import yaml" 2>/dev/null || { warn "Installing pyyaml…"; pip3 install pyyaml -q; }
 ok "inso  $(inso --version 2>&1 | head -1)"
 ok "deck  $(deck version 2>&1 | head -1)"
-ok "python3  $(python3 --version)"
 
 if [[ "$SKIP_DEPLOY" == "false" ]]; then
   [[ -n "${KONNECT_TOKEN:-}" ]]  || fail "KONNECT_TOKEN is not set."
@@ -74,9 +71,13 @@ ok "kong/kong-generated.yaml written"
 echo "── preview ──"
 head -20 kong/kong-generated.yaml
 
-# ── STEP 3: Build sandbox + deploy ──────────────────────────────────────────
-step "STEP 3/4 – Inject Mocking plugin → kong/sandbox.yaml"
-python3 scripts/generate_sandbox.py
+# ── STEP 3: Add plugin + deploy ─────────────────────────────────────────────
+step "STEP 3/4 – Add Mocking plugin from kong/mock-plugin.yaml"
+deck file add-plugins \
+  --state kong/kong-generated.yaml \
+  --overwrite \
+  --output-file kong/sandbox.yaml \
+  kong/mock-plugin.yaml
 ok "kong/sandbox.yaml written"
 
 step "STEP 3/4 – deck file validate kong/sandbox.yaml"
@@ -109,14 +110,9 @@ else
   # ── STEP 4: Test with inso ────────────────────────────────────────────────
   ENV_FILE="insomnia/.insomnia/Environment/env_sbi_nav_konnect.yml"
   step "STEP 4/4 – Inject ${KONNECT_DP_URL} into Insomnia env"
-  python3 - <<PY
-from pathlib import Path
-path = Path("${ENV_FILE}")
-lines = path.read_text(encoding="utf-8").splitlines()
-patched = [f"  base_url: ${KONNECT_DP_URL}" if l.strip().startswith("base_url:") else l for l in lines]
-path.write_text("\n".join(patched) + "\n", encoding="utf-8")
-print(f"Set base_url → ${KONNECT_DP_URL}")
-PY
+  sed -i.bak "s|^  base_url:.*|  base_url: ${KONNECT_DP_URL}|" "${ENV_FILE}"
+  rm -f "${ENV_FILE}.bak"
+  echo "Set base_url → ${KONNECT_DP_URL}"
 
   step "STEP 4/4 – Waiting 8s for DP propagation…"
   sleep 8

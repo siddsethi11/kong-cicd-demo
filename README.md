@@ -3,7 +3,7 @@
 This repository demonstrates an end-to-end API lifecycle using Kong + GitHub Actions:
 
 1. Lint OpenAPI with Insomnia CLI (`inso lint spec`)
-2. Generate sandbox config from OAS
+2. Convert OAS to Kong config and add Mocking plugin from a separate decK file
 3. Deploy to Kong Gateway Konnect using decK
 4. Run post-deploy API tests using Insomnia CLI (`inso run test`)
 
@@ -11,7 +11,7 @@ This repository demonstrates an end-to-end API lifecycle using Kong + GitHub Act
 
 - `openapi/sbi-mutual-fund-openapi.yaml`: sample mutual fund API spec
 - `insomnia/.insomnia/`: Insomnia workspace, environment, request, and test suite
-- `scripts/generate_sandbox.py`: builds Kong declarative mock config from OAS
+- `kong/mock-plugin.yaml`: separate decK file that defines Mocking plugin injection
 - `kong/sandbox.yaml`: generated during CI
 - `.github/workflows/kong-konnect-cicd.yml`: CI/CD pipeline
 

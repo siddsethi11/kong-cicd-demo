@@ -12,14 +12,14 @@ on:
     paths:
       - "openapi/**"
       - "insomnia/**"
-      - "scripts/**"
+      - "kong/mock-plugin.yaml"
       - ".github/workflows/kong-konnect-cicd.yml"
   push:
     branches: [main]
     paths:
       - "openapi/**"
       - "insomnia/**"
-      - "scripts/**"
+      - "kong/mock-plugin.yaml"
       - ".github/workflows/kong-konnect-cicd.yml"
   workflow_dispatch:
 
@@ -56,7 +56,7 @@ jobs:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # JOB 2+3  –  Step 2: Convert OAS → Kong config
-#             Step 3: Inject Mocking plugin → sandbox.yaml → deploy to Konnect
+#             Step 3: Add Mocking plugin from separate decK file → deploy
 # ─────────────────────────────────────────────────────────────────────────────
   deploy-konnect:
     name: "Steps 2+3: Convert, Mock, Deploy to Konnect"
@@ -80,10 +80,13 @@ jobs:
           echo "── kong-generated.yaml preview ──"
           cat kong/kong-generated.yaml
 
-      - name: "Step 3a – Inject Mocking plugin → sandbox.yaml"
+      - name: "Step 3a – Add Mocking plugin from kong/mock-plugin.yaml"
         run: |
-          pip install pyyaml -q
-          python3 scripts/generate_sandbox.py
+          deck file add-plugins \
+            --state kong/kong-generated.yaml \
+            --overwrite \
+            --output-file kong/sandbox.yaml \
+            kong/mock-plugin.yaml
 
       - name: "Step 3b – Validate sandbox config with deck"
         run: deck file validate kong/sandbox.yaml
