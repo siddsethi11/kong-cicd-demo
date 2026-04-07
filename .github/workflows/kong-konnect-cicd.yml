@@ -28,7 +28,7 @@ permissions:
 
 env:
   KONNECT_ADDR: ${{ vars.KONNECT_ADDR || 'https://in.api.konghq.com' }}
-  KONNECT_CONTROL_PLANE_NAME: ${{ vars.KONNECT_CONTROL_PLANE_NAME || 'marketplace' }}
+  KONNECT_CONTROL_PLANE_NAME: ${{ vars.KONNECT_CONTROL_PLANE_NAME || 'skylotech-control-plane' }}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # JOB 1  –  Step 1: Lint OpenAPI Specification
