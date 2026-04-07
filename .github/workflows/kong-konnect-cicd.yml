@@ -36,7 +36,7 @@ env:
 jobs:
   lint-openapi:
     name: "Step 1: Lint OAS with inso"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kong-dp]
 
     steps:
       - name: Checkout repository
@@ -59,7 +59,7 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   deploy-konnect:
     name: "Steps 2+3: Convert, Mock, Deploy to Konnect"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kong-dp]
     needs: lint-openapi
     if: github.event_name != 'pull_request'
 
