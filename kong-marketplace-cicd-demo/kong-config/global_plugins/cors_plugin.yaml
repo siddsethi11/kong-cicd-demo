@@ -1,0 +1,19 @@
+plugins:
+  - name: cors
+    config:
+      origins: 
+        - "*"
+      methods: 
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      headers: 
+        - "Content-Type"
+        - "Authorization"
+        - "X-Requested-With"
+      expose_headers: 
+        - "X-My-Custom-Header"
+      max_age: 3600
+      credentials: true

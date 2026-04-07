@@ -1,0 +1,15 @@
+plugins:
+  - name: rate-limiting
+    service: 
+      id: <service_id>  # Replace with the actual service ID
+    config:
+      second: 5  # Limit to 5 requests per second
+      hour: 10000  # Limit to 10,000 requests per hour
+      policy: local  # Use local rate limiting policy
+      limit_by: consumer  # Limit by consumer
+      fault_tolerant: true  # Enable fault tolerance
+      redis_host: <redis_host>  # Optional: Redis host for distributed rate limiting
+      redis_port: <redis_port>  # Optional: Redis port for distributed rate limiting
+      redis_timeout: 1000  # Optional: Redis timeout in milliseconds
+      redis_database: 0  # Optional: Redis database number
+      redis_password: <redis_password>  # Optional: Redis password if required

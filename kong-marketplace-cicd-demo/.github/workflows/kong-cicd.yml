@@ -1,0 +1,41 @@
+name: Kong CI/CD Workflow
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Install backend dependencies
+        working-directory: applications/marketplace-backend
+        run: npm install
+
+      - name: Install frontend dependencies
+        working-directory: applications/marketplace-frontend
+        run: npm install
+
+      - name: Deploy backend to Kong API Gateway
+        run: |
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh
+
+      - name: Run Insomnia tests
+        run: |
+          insomnia-cli run testing/insomnia-collection.json --env .env.template
+        env:
+          INSOMNIA_API_KEY: ${{ secrets.INSOMNIA_API_KEY }}

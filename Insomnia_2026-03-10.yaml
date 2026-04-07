@@ -1,0 +1,73 @@
+type: collection.insomnia.rest/5.0
+schema_version: "5.1"
+name: SBI NAV Demo
+meta:
+  id: wrk_8309a580068743bfa69dfbb309c42aca
+  created: 1773167348143
+  modified: 1773167348143
+  description: ""
+collection:
+  - url: "{{ _.base_url }}/nav/100035"
+    name: Get NAV for Bluechip Fund (Mock)
+    meta:
+      id: req_84a5e50e7be94a9d9590e39127d64acb
+      created: 1709590000000
+      modified: 1773167351163
+      isPrivate: false
+      description: ""
+      sortKey: -1773167348145
+    method: GET
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_e5a5b43c744f0cba068206f8b2727ef151cf6e6f
+    created: 1773167348237
+    modified: 1773167348237
+environments:
+  name: Base Environment
+  meta:
+    id: env_d9bd95db97374195b3d7ab6c134b3042
+    created: 1709590000000
+    modified: 1709590000000
+    isPrivate: false
+  data:
+    base_url: https://sbi-nav-demo.example.com
+  subEnvironments:
+    - name: Konnect deployment
+      meta:
+        id: env_78f3a9e14a534377bf9116b357aa11cf
+        created: 1709590000000
+        modified: 1709590000000
+        isPrivate: false
+        sortKey: 1773167348145
+      data:
+        base_url: http://localhost:8000
+testSuites:
+  - name: NAV Mock Tests
+    meta:
+      id: uts_sbi_nav_suite
+      created: 1709590000000
+      modified: 1709590000000
+      sortKey: -1709590000000
+    tests:
+      - name: Check Status 200 and schemeCode
+        meta:
+          id: ut_sbi_nav_1
+          created: 1709590000000
+          modified: 1709590000000
+          sortKey: -1709590000000
+        requestId: req_84a5e50e7be94a9d9590e39127d64acb
+        code: |-
+          const response1 = await insomnia.send();
+          expect(response1.status).to.equal(200);
+          const body = JSON.parse(response1.data);
+          expect(body.schemeCode).to.equal("100035");
+          expect(body.nav).to.be.a("number");

@@ -1,0 +1,108 @@
+{
+  "resources": [
+    {
+      "name": "Get All Products",
+      "method": "GET",
+      "url": "http://localhost:3000/products",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "name": "Get Product by ID",
+      "method": "GET",
+      "url": "http://localhost:3000/products/:id",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "name": "Create Product",
+      "method": "POST",
+      "url": "http://localhost:3000/products",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "name": "New Product",
+        "price": 19.99,
+        "description": "A description of the new product."
+      }
+    },
+    {
+      "name": "Update Product",
+      "method": "PUT",
+      "url": "http://localhost:3000/products/:id",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "name": "Updated Product",
+        "price": 24.99,
+        "description": "An updated description of the product."
+      }
+    },
+    {
+      "name": "Delete Product",
+      "method": "DELETE",
+      "url": "http://localhost:3000/products/:id",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "name": "Get All Users",
+      "method": "GET",
+      "url": "http://localhost:3000/users",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "name": "Get User by ID",
+      "method": "GET",
+      "url": "http://localhost:3000/users/:id",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "name": "Create User",
+      "method": "POST",
+      "url": "http://localhost:3000/users",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "username": "newuser",
+        "password": "password123"
+      }
+    },
+    {
+      "name": "Update User",
+      "method": "PUT",
+      "url": "http://localhost:3000/users/:id",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "username": "updateduser",
+        "password": "newpassword123"
+      }
+    },
+    {
+      "name": "Delete User",
+      "method": "DELETE",
+      "url": "http://localhost:3000/users/:id",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {}
+    }
+  ]
+}

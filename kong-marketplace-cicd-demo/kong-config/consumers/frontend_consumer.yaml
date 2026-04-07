@@ -1,0 +1,7 @@
+frontend:
+  username: "frontend_user"
+  password: "frontend_password"
+  custom_id: "frontend_consumer"
+  tags:
+    - "frontend"
+    - "consumer"

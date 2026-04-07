@@ -1,0 +1,62 @@
+routes:
+  - name: cart
+    paths:
+      - /api/cart
+    methods:
+      - GET
+      - POST
+      - DELETE
+    service: marketplace
+
+  - name: categories
+    paths:
+      - /api/categories
+    methods:
+      - GET
+      - POST
+    service: marketplace
+
+  - name: orders
+    paths:
+      - /api/orders
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+    service: marketplace
+
+  - name: payments
+    paths:
+      - /api/payments
+    methods:
+      - POST
+    service: marketplace
+
+  - name: products
+    paths:
+      - /api/products
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+    service: marketplace
+
+  - name: reviews
+    paths:
+      - /api/reviews
+    methods:
+      - GET
+      - POST
+    service: marketplace
+
+  - name: users
+    paths:
+      - /api/users
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+    service: marketplace

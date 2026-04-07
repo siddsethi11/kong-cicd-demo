@@ -1,0 +1,46 @@
+services:
+  marketplace:
+    url: http://localhost:3000
+    connect_timeout: 1000
+    write_timeout: 1000
+    read_timeout: 1000
+    retries: 5
+    tags:
+      - marketplace
+    routes:
+      - name: marketplace-route
+        paths:
+          - /api/marketplace
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+        strip_path: true
+        preserve_host: false
+        protocols:
+          - http
+          - https
+plugins:
+  - name: cors
+    service: marketplace
+    config:
+      origins:
+        - '*'
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+      headers:
+        - Content-Type
+        - Authorization
+      expose_headers:
+        - X-Total-Count
+      max_age: 3600
+  - name: rate-limiting
+    service: marketplace
+    config:
+      second: 5
+      hour: 1000
+      policy: local

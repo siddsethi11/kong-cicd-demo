@@ -1,0 +1,18 @@
+admin:
+  username: admin
+  password: admin_password
+  custom_id: admin_user
+  tags:
+    - admin
+    - user
+    - consumer
+  credentials:
+    - type: key-auth
+      key: admin_api_key
+      enabled: true
+    - type: oauth2
+      client_id: admin_client_id
+      client_secret: admin_client_secret
+      redirect_uris:
+        - http://localhost:3000/callback
+      enabled: true
