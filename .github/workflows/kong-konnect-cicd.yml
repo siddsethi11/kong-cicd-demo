@@ -67,8 +67,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup decK CLI
-        uses: kong/setup-deck@v1
+      - name: Verify decK CLI is available on runner
+        run: deck version
 
       - name: Run deploy steps via demo script
         env:
