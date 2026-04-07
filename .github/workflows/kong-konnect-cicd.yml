@@ -50,9 +50,8 @@ jobs:
           find /tmp/inso-extract -name 'inso' -type f -exec install -m 0755 {} /usr/local/bin/inso \;
           inso --version
 
-      - name: Lint Mutual Fund OAS
-        # Fails the pipeline if any spectral rule violations are found
-        run: inso lint spec openapi/sbi-mutual-fund-openapi.yaml --ci
+      - name: Run lint step via demo script
+        run: ./test-local.sh --lint-only
 
 # ─────────────────────────────────────────────────────────────────────────────
 # JOB 2+3  –  Step 2: Convert OAS → Kong config
@@ -71,46 +70,12 @@ jobs:
       - name: Setup decK CLI
         uses: kong/setup-deck@v1
 
-      - name: "Step 2 – Convert OAS to Kong declarative config"
-        run: |
-          mkdir -p kong
-          deck file openapi2kong \
-            -s openapi/sbi-mutual-fund-openapi.yaml \
-            -o kong/kong-generated.yaml
-          echo "── kong-generated.yaml preview ──"
-          cat kong/kong-generated.yaml
-
-      - name: "Step 3a – Add Mocking plugin from kong/mock-plugin.yaml"
-        run: |
-          deck file add-plugins \
-            --state kong/kong-generated.yaml \
-            --overwrite \
-            --output-file kong/sandbox.yaml \
-            kong/mock-plugin.yaml
-
-      - name: "Step 3b – Validate sandbox config with deck"
-        run: deck file validate kong/sandbox.yaml
-
-      - name: "Step 3c – Ping Konnect control plane"
-        run: |
-          deck gateway ping \
-            --konnect-token "${{ secrets.KONNECT_TOKEN }}" \
-            --konnect-addr  "${{ env.KONNECT_ADDR }}" \
-            --konnect-control-plane-name "${{ env.KONNECT_CONTROL_PLANE_NAME }}"
-
-      - name: "Step 3d – Show diff before applying"
-        run: |
-          deck gateway diff kong/sandbox.yaml \
-            --konnect-token "${{ secrets.KONNECT_TOKEN }}" \
-            --konnect-addr  "${{ env.KONNECT_ADDR }}" \
-            --konnect-control-plane-name "${{ env.KONNECT_CONTROL_PLANE_NAME }}"
-
-      - name: "Step 3e – Apply sandbox to Konnect"
-        run: |
-          deck gateway apply kong/sandbox.yaml \
-            --konnect-token "${{ secrets.KONNECT_TOKEN }}" \
-            --konnect-addr  "${{ env.KONNECT_ADDR }}" \
-            --konnect-control-plane-name "${{ env.KONNECT_CONTROL_PLANE_NAME }}"
+      - name: Run deploy steps via demo script
+        env:
+          KONNECT_TOKEN: ${{ secrets.KONNECT_TOKEN }}
+          KONNECT_ADDR: ${{ env.KONNECT_ADDR }}
+          KONNECT_CONTROL_PLANE_NAME: ${{ env.KONNECT_CONTROL_PLANE_NAME }}
+        run: ./test-local.sh --deploy-only
 
 # ─────────────────────────────────────────────────────────────────────────────
 # JOB 3  –  Step 4: Post-deploy API Tests via inso run test
@@ -128,25 +93,7 @@ jobs:
       - name: Verify inso CLI is available
         run: inso --version
 
-      - name: Inject Konnect data-plane URL into Insomnia environment
+      - name: Run Insomnia tests via demo script
         env:
           KONNECT_DP_URL: ${{ secrets.KONNECT_DP_URL || vars.KONNECT_DP_URL }}
-        run: |
-          [ -n "$KONNECT_DP_URL" ] || { echo "Set KONNECT_DP_URL as a secret or variable (e.g. http://localhost:8000)"; exit 1; }
-          # BSD sed (macOS) requires explicit empty-string backup arg with -i
-          sed -i '' "s|  base_url:.*|  base_url: $KONNECT_DP_URL|" \
-            insomnia/.insomnia/Environment/env_sbi_nav_konnect.yml
-          echo "Set base_url → $KONNECT_DP_URL"
-          grep "base_url" insomnia/.insomnia/Environment/env_sbi_nav_konnect.yml
-
-      - name: Wait for Konnect data-plane propagation
-        run: sleep 10
-
-      - name: "Step 4 – Run Insomnia test suite via inso"
-        # Tests are defined in insomnia/.insomnia/UnitTestSuite/uts_sbi_nav_suite.yml
-        # and insomnia/.insomnia/UnitTest/ut_sbi_nav_1.yml
-        run: |
-          inso run test uts_sbi_nav_suite \
-            --env env_sbi_nav_konnect \
-            --workingDir insomnia \
-            --ci
+        run: ./test-local.sh --test-only

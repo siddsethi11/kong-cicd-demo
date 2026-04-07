@@ -13,12 +13,15 @@
 #
 # Usage:
 #   export KONNECT_TOKEN="<pat>"
-#   export KONNECT_DP_URL="http://localhost:8000"     # reachable data plane
-#   export KONNECT_ADDR="https://in.api.konghq.com"   # optional
-#   export KONNECT_CONTROL_PLANE_NAME="marketplace"   # optional
+#   export KONNECT_DP_URL="http://localhost:8000"            # reachable data plane
+#   export KONNECT_ADDR="https://in.api.konghq.com"          # optional
+#   export KONNECT_CONTROL_PLANE_NAME="skylotech-control-plane" # optional
 #
-#   ./test-local.sh              # full 4-step run
-#   ./test-local.sh --skip-deploy # steps 1,2,3a-build only (skip deck apply+inso test requires live DP)
+#   ./test-local.sh                # full 4-step run
+#   ./test-local.sh --lint-only    # step 1 only
+#   ./test-local.sh --deploy-only  # steps 2-3 only
+#   ./test-local.sh --test-only    # step 4 only
+#   ./test-local.sh --skip-deploy  # steps 1-3 build/validate only
 # =============================================================================
 
 set -euo pipefail
@@ -31,62 +34,82 @@ ok()   { echo -e "${GREEN}✔  $*${RESET}"; }
 fail() { echo -e "${RED}✘  $*${RESET}" >&2; exit 1; }
 warn() { echo -e "${YELLOW}⚠  $*${RESET}"; }
 
+MODE="full"
 SKIP_DEPLOY=false
-for arg in "$@"; do [[ "$arg" == "--skip-deploy" ]] && SKIP_DEPLOY=true; done
+for arg in "$@"; do
+  case "$arg" in
+    --lint-only) MODE="lint-only" ;;
+    --deploy-only) MODE="deploy-only" ;;
+    --test-only) MODE="test-only" ;;
+    --skip-deploy) SKIP_DEPLOY=true ;;
+    *) fail "Unknown argument: $arg" ;;
+  esac
+done
 
 [[ -f "openapi/sbi-mutual-fund-openapi.yaml" ]] || fail "Run from the kong-cicd-demo repo root."
 
 KONNECT_ADDR="${KONNECT_ADDR:-https://in.api.konghq.com}"
-KONNECT_CONTROL_PLANE_NAME="${KONNECT_CONTROL_PLANE_NAME:-marketplace}"
+KONNECT_CONTROL_PLANE_NAME="${KONNECT_CONTROL_PLANE_NAME:-skylotech-control-plane}"
 
 # ── pre-flight ────────────────────────────────────────────────────────────────
 step "Pre-flight: checking required tools"
-command -v inso    >/dev/null || fail "inso not found.   brew install insomnia-inso"
-command -v deck    >/dev/null || fail "deck not found.   brew install deck"
-ok "inso  $(inso --version 2>&1 | head -1)"
-ok "deck  $(deck version 2>&1 | head -1)"
 
-if [[ "$SKIP_DEPLOY" == "false" ]]; then
-  [[ -n "${KONNECT_TOKEN:-}" ]]  || fail "KONNECT_TOKEN is not set."
-  [[ -n "${KONNECT_DP_URL:-}" ]] || fail "KONNECT_DP_URL is not set (e.g. http://localhost:8000)."
+if [[ "$MODE" == "full" || "$MODE" == "lint-only" || "$MODE" == "test-only" ]]; then
+  command -v inso >/dev/null || fail "inso not found.   brew install insomnia-inso"
+  ok "inso  $(inso --version 2>&1 | head -1)"
+fi
+
+if [[ "$MODE" == "full" || "$MODE" == "deploy-only" || "$SKIP_DEPLOY" == "true" ]]; then
+  command -v deck >/dev/null || fail "deck not found.   brew install deck"
+  ok "deck  $(deck version 2>&1 | head -1)"
+fi
+
+if [[ "$MODE" == "full" || "$MODE" == "deploy-only" ]]; then
+  [[ -n "${KONNECT_TOKEN:-}" ]] || fail "KONNECT_TOKEN is not set."
+fi
+
+if [[ "$MODE" == "full" || "$MODE" == "test-only" ]]; then
+  [[ -n "${KONNECT_DP_URL:-}" ]] || fail "KONNECT_DP_URL is not set (e.g. http://api.kong.com)."
 fi
 
 echo ""
 echo -e "${BOLD}================================================${RESET}"
 echo -e "${BOLD} Kong Konnect Mutual Fund – Local CI/CD run${RESET}"
 echo -e "${BOLD}================================================${RESET}"
-[[ "$SKIP_DEPLOY" == "true" ]] && warn "Running in --skip-deploy mode (steps 1–3 local only)"
+[[ "$SKIP_DEPLOY" == "true" ]] && warn "Running in --skip-deploy mode (steps 1-3 local only)"
 
-# ── STEP 1: Lint OAS ─────────────────────────────────────────────────────────
-step "STEP 1/4 – Lint OAS with inso lint spec"
-inso lint spec openapi/sbi-mutual-fund-openapi.yaml --ci
-ok "Spec is valid – no linting errors"
+lint_step() {
+  step "STEP 1/4 – Lint OAS with inso lint spec"
+  inso lint spec openapi/sbi-mutual-fund-openapi.yaml --ci
+  ok "Spec is valid – no linting errors"
+}
 
-# ── STEP 2: Convert OAS → Kong config ───────────────────────────────────────
-step "STEP 2/4 – deck file openapi2kong → kong/kong-generated.yaml"
-deck file openapi2kong \
-  -s openapi/sbi-mutual-fund-openapi.yaml \
-  -o kong/kong-generated.yaml
-ok "kong/kong-generated.yaml written"
-echo "── preview ──"
-head -20 kong/kong-generated.yaml
+deploy_step() {
+  step "STEP 2/4 – deck file openapi2kong → kong/kong-generated.yaml"
+  deck file openapi2kong \
+    -s openapi/sbi-mutual-fund-openapi.yaml \
+    -o kong/kong-generated.yaml
+  ok "kong/kong-generated.yaml written"
+  echo "── preview ──"
+  head -20 kong/kong-generated.yaml
 
-# ── STEP 3: Add plugin + deploy ─────────────────────────────────────────────
-step "STEP 3/4 – Add Mocking plugin from kong/mock-plugin.yaml"
-deck file add-plugins \
-  --state kong/kong-generated.yaml \
-  --overwrite \
-  --output-file kong/sandbox.yaml \
-  kong/mock-plugin.yaml
-ok "kong/sandbox.yaml written"
+  step "STEP 3/4 – Add Mocking plugin from kong/mock-plugin.yaml"
+  deck file add-plugins \
+    --state kong/kong-generated.yaml \
+    --overwrite \
+    --output-file kong/sandbox.yaml \
+    kong/mock-plugin.yaml
+  ok "kong/sandbox.yaml written"
 
-step "STEP 3/4 – deck file validate kong/sandbox.yaml"
-deck file validate kong/sandbox.yaml
-ok "Config is valid"
+  step "STEP 3/4 – deck file validate kong/sandbox.yaml"
+  deck file validate kong/sandbox.yaml
+  ok "Config is valid"
 
-if [[ "$SKIP_DEPLOY" == "true" ]]; then
-  warn "Skipping deck gateway apply (--skip-deploy)"
-else
+  if [[ "$SKIP_DEPLOY" == "true" ]]; then
+    warn "Skipping deck gateway apply (--skip-deploy)"
+    return 0
+  fi
+
   step "STEP 3/4 – Ping Konnect: ${KONNECT_CONTROL_PLANE_NAME}"
   deck gateway ping \
     --konnect-token "${KONNECT_TOKEN}" \
@@ -106,8 +129,9 @@ else
     --konnect-addr  "${KONNECT_ADDR}" \
     --konnect-control-plane-name "${KONNECT_CONTROL_PLANE_NAME}"
   ok "Sandbox deployed"
+}
 
-  # ── STEP 4: Test with inso ────────────────────────────────────────────────
+test_step() {
   ENV_FILE="insomnia/.insomnia/Environment/env_sbi_nav_konnect.yml"
   step "STEP 4/4 – Inject ${KONNECT_DP_URL} into Insomnia env"
   sed -i.bak "s|^  base_url:.*|  base_url: ${KONNECT_DP_URL}|" "${ENV_FILE}"
@@ -123,7 +147,26 @@ else
     --workingDir insomnia \
     --ci
   ok "All API tests passed"
-fi
+}
+
+case "$MODE" in
+  lint-only)
+    lint_step
+    ;;
+  deploy-only)
+    deploy_step
+    ;;
+  test-only)
+    test_step
+    ;;
+  full)
+    lint_step
+    deploy_step
+    if [[ "$SKIP_DEPLOY" == "false" ]]; then
+      test_step
+    fi
+    ;;
+esac
 
 echo ""
 echo -e "${BOLD}${GREEN}================================================${RESET}"
