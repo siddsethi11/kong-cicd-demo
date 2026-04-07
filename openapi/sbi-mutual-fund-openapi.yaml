@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: SBI Mutual Fund NAV API
-  version: 1.0.1
+version: 1.0.2
   description: A simplified API to check the Net Asset Value (NAV) of SBI Mutual Funds.
   contact:
     name: API Support
